@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Hospital Paradox | Interactive Simulation</title>
+<style>
+:root{
+  --bg:#081018; --panel:#101c26; --panel2:#14232e; --text:#edf5f7;
+  --muted:#91a5ad; --line:#263a45; --green:#38d39f; --amber:#f2b84b;
+  --red:#ff5b68; --blue:#53b8ff; --white:#fff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;font-family:Inter,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at 50% 0,#172b38 0,#081018 52%,#050b10 100%);color:var(--text)}
+body{overflow-x:hidden}
+button{font:inherit}
+.app{min-height:100vh;display:flex;flex-direction:column}
+.topbar{height:70px;border-bottom:1px solid var(--line);background:rgba(5,12,17,.9);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:20}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:.12em;font-size:13px}
+.logo{width:34px;height:34px;border:1px solid #35515d;border-radius:9px;display:grid;place-items:center;color:var(--green);font-size:18px;animation:logoPulse 2s ease-in-out infinite}
+@keyframes logoPulse{0%,100%{box-shadow:0 0 0 rgba(56,211,159,0)}50%{box-shadow:0 0 18px rgba(56,211,159,.45)}}
+.status{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:12px}
+.dot{width:8px;height:8px;background:var(--green);border-radius:50%;box-shadow:0 0 12px var(--green);animation:blink 1.6s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.35}}
+main{width:min(1180px,94%);margin:0 auto;flex:1;padding:28px 0 60px}
+.screen{display:none;animation:enter .45s ease}
+.screen.active{display:block}
+@keyframes enter{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.eyebrow{color:var(--green);font-size:11px;font-weight:800;letter-spacing:.2em;margin-bottom:12px}
+h1{font-size:clamp(38px,7vw,78px);line-height:.95;margin:0 0 18px;letter-spacing:-.055em}
+h2{font-size:clamp(28px,4vw,46px);line-height:1;margin:0 0 14px;letter-spacing:-.035em}
+h3{margin:0 0 8px}
+p{color:#b8c8ce;line-height:1.6}
+.hero{min-height:calc(100vh - 150px);display:grid;place-items:center}
+.hero-inner{text-align:center;max-width:900px}
+.hero-sub{font-size:18px;max-width:650px;margin:0 auto 30px}
+.pulse-line{height:1px;background:linear-gradient(90deg,transparent,var(--green),transparent);margin:32px auto;width:min(620px,90%);opacity:.65}
+.heroecg{display:block;width:min(680px,92%);height:64px;margin:20px auto}
+.btnrow{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.btn{border:1px solid #35505c;background:#13232e;color:var(--text);padding:14px 18px;border-radius:10px;cursor:pointer;transition:.2s;min-height:50px}
+.btn:hover{transform:translateY(-2px);border-color:#5f7f8b;background:#182c38}
+.btn.primary{background:var(--green);border-color:var(--green);color:#06120f;font-weight:900}
+.btn.danger{background:rgba(255,91,104,.1);border-color:#7b323d;color:#ff9ba4}
+.btn.amber{background:rgba(242,184,75,.1);border-color:#795d28;color:#ffd889}
+.btn.blue{background:rgba(83,184,255,.1);border-color:#315f78;color:#9fdcff}
+.btn.big{padding:20px 24px;font-size:16px;text-align:left}
+.backbtn{min-height:38px;padding:8px 14px;font-size:12px;font-weight:800;letter-spacing:.1em}
+.grid{display:grid;gap:16px}
+.grid2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:1fr}.topbar{padding:0 15px}.brand span{display:none}}
+.card{background:linear-gradient(145deg,rgba(20,35,46,.96),rgba(10,22,29,.96));border:1px solid var(--line);border-radius:16px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.22)}
+.card.clickable{cursor:pointer;transition:.2s}
+.card.clickable:hover{transform:translateY(-3px);border-color:#54717d}
+.tag{display:inline-flex;padding:5px 8px;border-radius:6px;background:#0a151d;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em}
+.command{display:grid;grid-template-columns:1fr 320px;gap:18px}
+@media(max-width:900px){.command{grid-template-columns:1fr}}
+.metric{padding:14px;border:1px solid var(--line);border-radius:12px;background:#0d1921}
+.metric-label{font-size:10px;color:var(--muted);letter-spacing:.12em;font-weight:800}
+.metric-value{font-size:25px;font-weight:900;margin-top:7px}
+.green{color:var(--green)}.red{color:var(--red)}.amberText{color:var(--amber)}.blueText{color:var(--blue)}
+.scene{min-height:430px;position:relative;overflow:hidden}
+.scene:before{content:"";position:absolute;inset:0;background:linear-gradient(120deg,rgba(83,184,255,.06),transparent 45%,rgba(56,211,159,.04));pointer-events:none}
+.scene-title{font-size:12px;color:var(--muted);letter-spacing:.15em;font-weight:800}
+.timer{font-size:34px;font-weight:900;color:var(--amber);font-variant-numeric:tabular-nums}
+.tbar{height:6px;background:#081117;border-radius:99px;overflow:hidden;margin:8px 0 10px;max-width:320px}
+.tbar i{display:block;height:100%;width:100%;background:var(--amber);transition:width 1s linear,background .3s}
+.tbar i.low{background:var(--red)}
+.option{height:100%;min-height:180px}
+.option .letter{font-size:12px;color:var(--muted);font-weight:900;letter-spacing:.15em}
+.option h3{margin-top:20px;font-size:20px}
+.option p{font-size:13px}
+.alert{border:1px solid #7b323d;background:rgba(255,91,104,.08);border-radius:12px;padding:20px;animation:alert .8s ease}
+@keyframes alert{0%,100%{box-shadow:0 0 0 rgba(255,91,104,0)}50%{box-shadow:0 0 35px rgba(255,91,104,.25)}}
+.alert-title{color:#ff8b94;font-size:11px;font-weight:900;letter-spacing:.18em}
+.waste-items{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0}
+.waste{padding:11px 13px;border:1px solid #334953;border-radius:9px;background:#0b161e;color:#c5d2d7;font-size:12px}
+.arrow{color:var(--amber)}
+.budget{font-size:46px;font-weight:950;color:var(--green);letter-spacing:-.04em}
+.choice-card{min-height:210px}
+.choice-card .choice-title{font-size:19px;font-weight:900;margin:17px 0 8px}
+.outcome{margin-top:20px;padding:22px;border-radius:13px;border:1px solid var(--line);background:#0b171f}
+.outcome h3{font-size:23px}
+.outflex{display:flex;gap:22px;align-items:center}
+@media(max-width:700px){.outflex{flex-direction:column;align-items:flex-start}}
+.vizsvg{width:150px;height:118px;flex:none}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+@media(max-width:700px){.kpis{grid-template-columns:1fr}}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:15px;background:#0d1921;font-size:11px;font-weight:800;letter-spacing:.08em;color:#c5d2d7}
+.kpi strong{display:block;font-size:22px;margin-top:8px}
+.kbar{height:8px;border-radius:99px;background:#081117;border:1px solid #243844;overflow:hidden;margin-top:10px}
+.kbar i{display:block;height:100%;width:0;transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+.kbar i.g{background:linear-gradient(90deg,#1f9c76,var(--green))}
+.kbar i.r{background:linear-gradient(90deg,#c0414d,var(--red))}
+.kbar i.b{background:linear-gradient(90deg,#2f86c0,var(--blue))}
+.kbar i.n{background:#5d7480}
+.reveal{min-height:70vh;display:grid;place-items:center;text-align:center}
+.reveal h2{font-size:clamp(38px,7vw,76px)}
+.strike{font-size:27px;color:#83949b;text-decoration:line-through;text-decoration-color:var(--red);text-decoration-thickness:3px}
+.question{font-size:clamp(40px,8vw,90px);font-weight:950;line-height:.95;letter-spacing:-.06em}
+.question .accent{color:var(--red)}
+.footer-nav{display:flex;justify-content:space-between;align-items:center;margin-top:22px;gap:10px}
+.progress{position:fixed;bottom:0;left:0;height:3px;background:var(--green);z-index:30;transition:width .4s}
+.toast{position:fixed;right:20px;bottom:25px;background:#152630;border:1px solid #3a5662;padding:15px 18px;border-radius:11px;box-shadow:0 15px 50px #0008;z-index:50;max-width:360px;display:none}
+.toast.show{display:block;animation:toast .3s ease}
+@keyframes toast{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.modal{position:fixed;inset:0;background:#02070bcc;display:none;place-items:center;z-index:60;padding:20px}
+.modal.show{display:grid}
+.modal-box{width:min(600px,100%);background:#101c26;border:1px solid #3b5661;border-radius:16px;padding:28px;box-shadow:0 30px 100px #000}
+.small{font-size:12px;color:var(--muted)}
+.hidden{display:none!important}
+h1,h2,h3,h4,h5,h6{color:#ffffff}
+button.card{color:var(--text)}
+button.card h1,button.card h2,button.card h3,button.card h4,button.card h5,button.card h6{color:#ffffff}
+.selected{border-color:var(--green)!important;box-shadow:0 0 0 1px var(--green),0 0 30px rgba(56,211,159,.15)}
+.confirm-row{margin-top:18px;display:flex;justify-content:center}
+.btn.big.picked-right{border-color:var(--green);background:rgba(56,211,159,.14)}
+.btn.big.picked-wrong{border-color:#7b323d;background:rgba(255,91,104,.1)}
+.verdict{display:inline-flex;padding:5px 10px;border-radius:6px;font-size:11px;font-weight:900;letter-spacing:.14em;margin-bottom:12px}
+.verdict.right{background:rgba(56,211,159,.15);color:var(--green)}
+.verdict.partial{background:rgba(242,184,75,.15);color:var(--amber)}
+
+/* ===== Diagram system ===== */
+.ecg{fill:none;stroke:var(--green);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:100;stroke-dashoffset:100;animation:ecgSweep 2.8s linear infinite;filter:drop-shadow(0 0 4px var(--green))}
+@keyframes ecgSweep{from{stroke-dashoffset:100}to{stroke-dashoffset:-100}}
+.or-room{border:1px solid #29404c;border-radius:13px;margin:18px 0;overflow:hidden;background:#0a151d}
+.orsvg{display:block;width:100%;height:auto}
+.lamp{animation:lampGlow 3s ease-in-out infinite alternate}
+@keyframes lampGlow{from{opacity:.75}to{opacity:1}}
+.cone{animation:coneGlow 4s ease-in-out infinite alternate}
+@keyframes coneGlow{from{opacity:.55}to{opacity:1}}
+.focus{fill:none;stroke:var(--blue);stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ping 2s ease-out infinite}
+@keyframes ping{from{transform:scale(1);opacity:1}to{transform:scale(2.8);opacity:0}}
+.trayglow{animation:trayGlow 2.4s ease-in-out infinite alternate}
+.trayglow.d2{animation-delay:1.2s}
+@keyframes trayGlow{from{opacity:.65}to{opacity:1}}
+.blinkdot{animation:blink 1.2s ease-in-out infinite}
+
+.ringwrap{position:relative;width:130px;margin:0 auto}
+.ringwrap.big{width:240px}
+.ringwrap.mid{width:170px}
+.ringsvg{display:block;width:100%;height:auto}
+.ring-track{fill:none;stroke:#1b2f3a;stroke-width:9}
+.ring-prog{fill:none;stroke-width:9;stroke-linecap:round}
+#dRing{transition:stroke-dashoffset 1s linear,stroke .3s}
+.ringcenter{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.ringcenter b{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums;color:#fff}
+.ringcenter span{font-size:11px;color:var(--muted);font-weight:700}
+.ringwrap.big .ringcenter b{font-size:54px}
+.ringmetric{text-align:center}
+.ringmetric .metric-label{margin-top:10px}
+.safetybox{display:grid;place-items:center;text-align:center;gap:6px}
+.safetybox .ecgbox{width:100%;max-width:260px;height:44px}
+.trend{font-size:30px;font-weight:950;line-height:1}
+
+.tanksvg{display:block;width:100%;max-width:300px;height:auto;margin:0 auto}
+.wavemove{animation:wave 3s linear infinite}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-90px)}}
+.drop{fill:#c5d2d7;opacity:0;animation:dropFall 2.4s ease-in infinite}
+.drop.d2{animation-delay:.6s}.drop.d3{animation-delay:1.2s}.drop.d4{animation-delay:1.8s}
+@keyframes dropFall{0%{transform:translateY(0);opacity:0}15%{opacity:.95}85%{opacity:.9}100%{transform:translateY(120px);opacity:0}}
+.warnpulse{animation:blink 1s ease-in-out infinite}
+.capnum{font-size:44px;font-weight:950;color:var(--red);text-align:center;margin-top:4px;font-variant-numeric:tabular-nums}
+
+.syssvg{display:block;width:100%;height:auto;max-width:520px;margin:0 auto}
+.orbit{fill:none;stroke:#2c4654;stroke-width:2;stroke-dasharray:5 7;animation:orbitFlow 3s linear infinite}
+@keyframes orbitFlow{to{stroke-dashoffset:-48}}
+.halo{fill:none;stroke-width:2;opacity:0;transform-box:fill-box;transform-origin:center;animation:halo 9s ease-out infinite}
+@keyframes halo{0%{opacity:.95;transform:scale(.85)}14%{opacity:0;transform:scale(1.7)}100%{opacity:0;transform:scale(1.7)}}
+.nodelabel{font-size:10.5px;font-weight:800;letter-spacing:.08em;fill:#c5d2d7}
+.meter{height:14px;border-radius:99px;background:#081117;border:1px solid #293d47;overflow:hidden;margin:6px 0 16px}
+.meter i{display:block;height:100%;width:var(--to);animation:fillTo 2.4s cubic-bezier(.2,.8,.2,1) both}
+.meter i.g{background:linear-gradient(90deg,#1f9c76,var(--green))}
+.meter i.r{background:linear-gradient(90deg,#c0414d,var(--red))}
+@keyframes fillTo{from{width:var(--from)}to{width:var(--to)}}
+
+.gear{transform-box:fill-box;transform-origin:center;animation:spin 3s linear infinite}
+.gear.slow{animation-duration:18s;animation-direction:reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+.warnflick{animation:flick 1.1s steps(2,end) infinite}
+@keyframes flick{0%,100%{opacity:1}50%{opacity:.3}}
+.eqrow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;align-items:center;margin:25px 0}
+@media(max-width:700px){.eqrow{grid-template-columns:1fr}.eqop{display:none}}
+.eqop{font-size:34px;font-weight:900;color:var(--amber);text-align:center}
+.eqcard{padding:14px;border:1px solid var(--line);border-radius:12px;background:#0d1921;text-align:center}
+.eqcard svg{width:64px;height:64px}
+.eqcard.bad{border-color:#7b323d;background:rgba(255,91,104,.07)}
+
+.cascade{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:0;margin:44px 0 20px}
+.step{padding:14px 15px;border:1px solid #38505b;border-radius:10px;background:#0e1b23;font-size:12px;font-weight:800;animation:lit 9s ease-in-out infinite;animation-delay:calc(var(--i)*1.5s);margin:6px 0;display:flex;flex-direction:column;gap:4px;align-items:center}
+.step .num{font-size:9px;color:var(--muted);letter-spacing:.2em}
+@keyframes lit{0%,15%{border-color:var(--green);background:rgba(56,211,159,.14);box-shadow:0 0 24px rgba(56,211,159,.3)}18%,100%{border-color:#38505b;background:#0e1b23;box-shadow:none}}
+.link{width:34px;height:2px;background:repeating-linear-gradient(90deg,#3a5662 0 4px,transparent 4px 8px);position:relative;margin:0 2px}
+.link:after{content:"";position:absolute;top:-3px;left:0;width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber);animation:travel 1.5s linear infinite}
+@keyframes travel{from{left:0;opacity:0}20%{opacity:1}to{left:calc(100% - 8px);opacity:0}}
+
+.sdgwrap{display:grid;grid-template-columns:minmax(0,380px) 1fr;gap:20px;align-items:center}
+@media(max-width:860px){.sdgwrap{grid-template-columns:1fr}}
+.sdgsvg{display:block;width:100%;height:auto}
+.sdgline{stroke:#38505b;stroke-width:2;stroke-dasharray:6 6;animation:orbitFlow 1.6s linear infinite}
+.sdgnode circle.nc{transition:.25s}
+.sdgnode.hl circle.nc{stroke-width:5;filter:drop-shadow(0 0 12px currentColor)}
+.sdgnode .sdgpulse{fill:none;stroke-width:2;transform-box:fill-box;transform-origin:center;animation:ping 3s ease-out infinite}
+.sdgcards{display:grid;gap:12px}
+.sdgcard{padding:16px 18px;border-left:4px solid var(--c);transition:.2s;cursor:default}
+.sdgcard:hover{transform:translateX(4px);border-color:var(--c)}
+.sdgcard .sdg-num{font-size:12px;font-weight:900;letter-spacing:.15em;color:var(--c)}
+.sdgcard h3{font-size:15px;margin:4px 0}
+.sdgcard p{font-size:13px;margin:0}
+
+/* hospital-system viz animations */
+.flame{transform-box:fill-box;transform-origin:50% 100%;animation:flameFlick .35s ease-in-out infinite alternate}
+@keyframes flameFlick{from{transform:scale(1,1)}to{transform:scale(.88,1.14)}}
+.smoke{opacity:0;animation:smokeRise 3s ease-out infinite;transform-box:fill-box;transform-origin:center}
+.smoke.s2{animation-delay:1s}.smoke.s3{animation-delay:2s}
+@keyframes smokeRise{0%{transform:translateY(0) scale(.6);opacity:.7}100%{transform:translateY(-42px) scale(1.7);opacity:0}}
+.needle{transform-origin:100px 30px;animation:sweep 2.6s ease-in-out infinite alternate}
+@keyframes sweep{from{transform:rotate(-55deg)}to{transform:rotate(65deg)}}
+.crate{fill:#16303c;stroke:var(--amber);opacity:0;animation:crateIn 4s ease infinite}
+.crate.c2{animation-delay:.6s}.crate.c3{animation-delay:1.2s}.crate.c4{animation-delay:1.8s}
+@keyframes crateIn{0%{transform:translateY(-46px);opacity:0}12%{opacity:1}22%,92%{transform:translateY(0);opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="brand"><div class="logo">+</div><span>CITY GENERAL // SIMULATION CONTROL</span></div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <button class="btn backbtn hidden" id="backBtn" onclick="back()">← BACK</button>
+    <div class="status"><span class="dot"></span><span id="phaseLabel">SYSTEM READY</span></div>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ S0 ============ -->
+<section id="s0" class="screen active">
+  <div class="hero">
+    <div class="hero-inner">
+      <div class="eyebrow">HOSPITAL SUSTAINABILITY BOARD // LIVE SIMULATION</div>
+      <h1>THE HOSPITAL<br>PARADOX</h1>
+      <p class="hero-sub">When clinical safety creates an environmental health problem.</p>
+      <svg class="heroecg" viewBox="0 0 600 60" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0 30H600" stroke="#1d3440" stroke-width="1"/>
+        <path class="ecg" pathLength="100" d="M0 30H90l8 0 8-24 10 48 8-34 6 10H260l8 0 8-24 10 48 8-34 6 10H430l8 0 8-24 10 48 8-34 6 10H600"/>
+      </svg>
+      <p class="small">You are not watching a presentation. You are running the system.</p>
+      <div class="btnrow" style="margin-top:25px">
+        <button class="btn primary" onclick="go(1)">ENTER HOSPITAL COMMAND CENTRE</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S1 ============ -->
+<section id="s1" class="screen">
+  <div class="eyebrow">07:30 AM // EMERGENCY SURGERY</div>
+  <div class="command">
+    <div class="card scene">
+      <div class="scene-title">CITY GENERAL HOSPITAL // OPERATING ROOM 04</div>
+      <div class="or-room">
+        <svg class="orsvg" viewBox="0 0 600 260" role="img" aria-label="Operating room with a patient, a monitor and two device trays">
+          <defs>
+            <linearGradient id="orbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0f2029"/><stop offset="1" stop-color="#091319"/></linearGradient>
+            <radialGradient id="lampcone" cx=".5" cy="0" r="1"><stop offset="0" stop-color="#cdf4ff" stop-opacity=".5"/><stop offset="1" stop-color="#cdf4ff" stop-opacity="0"/></radialGradient>
+          </defs>
+          <rect width="600" height="260" fill="url(#orbg)"/>
+          <g stroke="#17303c" stroke-width="1"><path d="M0 200H600"/><path d="M60 0V200M120 0V200M180 0V200M240 0V200M300 0V200M360 0V200M420 0V200M480 0V200M540 0V200"/></g>
+          <circle class="blinkdot" cx="22" cy="20" r="4" fill="#ff5b68"/>
+          <text x="32" y="24" fill="#91a5ad" font-size="9" font-weight="800" letter-spacing="1.5">OR-04 · LIVE</text>
+          <path d="M300 0V26" stroke="#4a6572" stroke-width="5"/>
+          <path class="cone" d="M300 34L205 200H395Z" fill="url(#lampcone)"/>
+          <ellipse class="lamp" cx="300" cy="34" rx="48" ry="11" fill="#e4f3f6"/>
+          <ellipse cx="300" cy="34" rx="30" ry="6" fill="#fff" opacity=".7"/>
+          <rect x="290" y="188" width="20" height="46" fill="#3d525b"/>
+          <rect x="250" y="232" width="100" height="9" rx="4" fill="#2f4249"/>
+          <rect x="170" y="168" width="260" height="20" rx="10" fill="#60747c"/>
+          <ellipse cx="198" cy="156" rx="15" ry="13" fill="#d2b39a"/>
+          <rect x="206" y="146" width="212" height="24" rx="12" fill="#2d6f90"/>
+          <rect x="296" y="142" width="50" height="14" rx="4" fill="#0e3a52" stroke="#53b8ff" stroke-opacity=".7"/>
+          <circle class="focus" cx="321" cy="149" r="7"/>
+          <circle cx="321" cy="149" r="3" fill="#53b8ff"/>
+          <path d="M520 142V230M495 232H545" stroke="#3d525b" stroke-width="4"/>
+          <g transform="translate(462 58)">
+            <rect width="116" height="84" rx="9" fill="#06111a" stroke="#2c4654"/>
+            <text x="10" y="17" fill="#38d39f" font-size="9" font-weight="800">HR 72</text>
+            <text x="62" y="17" fill="#53b8ff" font-size="9" font-weight="800">SpO2 98</text>
+            <path class="ecg" pathLength="100" d="M8 54H28L33 54L38 32L44 74L50 46L55 54H72L77 54L82 34L88 72L94 48L98 54H108"/>
+          </g>
+          <rect x="14" y="112" width="160" height="120" rx="10" fill="#0c1a22" stroke="#223742"/>
+          <g class="trayglow">
+            <rect x="22" y="120" width="144" height="46" rx="7" fill="#0a1820" stroke="#53b8ff"/>
+            <g stroke="#9fdcff" stroke-width="3" stroke-linecap="round"><path d="M38 132L66 156M38 156L66 132"/></g>
+            <circle cx="34" cy="130" r="5" fill="none" stroke="#9fdcff" stroke-width="2.5"/>
+            <circle cx="34" cy="158" r="5" fill="none" stroke="#9fdcff" stroke-width="2.5"/>
+            <text x="80" y="140" fill="#53b8ff" font-size="9" font-weight="800">A · REUSABLE</text>
+            <text x="80" y="154" fill="#91a5ad" font-size="8">needs reprocessing</text>
+          </g>
+          <g class="trayglow d2">
+            <rect x="22" y="176" width="144" height="46" rx="7" fill="#0a1820" stroke="#38d39f"/>
+            <rect x="30" y="188" width="38" height="24" rx="4" fill="rgba(56,211,159,.14)" stroke="#38d39f"/>
+            <path d="M36 200H62" stroke="#38d39f" stroke-width="2"/>
+            <text x="80" y="196" fill="#38d39f" font-size="9" font-weight="800">B · SINGLE-USE</text>
+            <text x="80" y="210" fill="#91a5ad" font-size="8">sterile · new waste</text>
+          </g>
+        </svg>
+      </div>
+      <h2>A patient requires an urgent procedure.</h2>
+      <p>Two technologies are available. There is no automatically correct answer.</p>
+      <div class="timer" id="decisionTimer">00:30</div>
+      <div class="tbar"><i id="timerBar"></i></div>
+      <div class="small">Choose before the timer reaches zero.</div>
+    </div>
+    <div class="grid">
+      <button class="card clickable option" onclick="chooseDevice('reusable')">
+        <div class="letter">OPTION A</div><h3>CONVENTIONAL REUSABLE DEVICE</h3>
+        <p>Requires appropriate reprocessing and sterilization before reuse.</p>
+      </button>
+      <button class="card clickable option" onclick="chooseDevice('single')">
+        <div class="letter">OPTION B</div><h3>NEW SINGLE-USE BIO-PLASTIC DEVICE</h3>
+        <p>Arrives sterile and ready to use, but introduces a new material and waste stream.</p>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S2 ============ -->
+<section id="s2" class="screen">
+  <div class="eyebrow" id="s2Eyebrow">CLINICAL DECISION // OPERATING ROOM</div>
+  <div class="card">
+    <div class="grid grid2">
+      <div>
+        <span class="tag">DOCTOR / SURGEON</span>
+        <p id="s2Doctor"></p>
+        <span class="tag">INFECTION CONTROL OFFICER</span>
+        <p id="s2Ico"></p>
+      </div>
+      <div class="safetybox">
+        <div class="small" style="letter-spacing:.15em;font-weight:800">PATIENT SAFETY INDEX</div>
+        <div class="ringwrap mid" id="safetyRingWrap"></div>
+        <svg class="ecgbox" viewBox="0 0 260 44" preserveAspectRatio="none" aria-hidden="true">
+          <path class="ecg" pathLength="100" d="M0 22H40l6 0 6-18 8 36 6-26 5 8H120l6 0 6-18 8 36 6-26 5 8H200l6 0 6-18 8 36 6-26 5 8H260"/>
+        </svg>
+        <div class="trend green" id="s2Arrow">↑↑↑</div>
+        <div class="green" style="font-weight:900" id="s2Result">SURGERY SUCCESSFUL</div>
+      </div>
+    </div>
+  </div>
+  <div id="clinicalAlert" class="alert hidden" style="margin-top:18px">
+    <div class="alert-title">SYSTEM ALERT</div>
+    <h2 style="margin-top:10px" id="s2AlertText"></h2>
+    <button class="btn danger" onclick="go(3)">CONTINUE</button>
+  </div>
+</section>
+
+<!-- ============ S3 ============ -->
+<section id="s3" class="screen">
+  <div class="eyebrow" id="s3Eyebrow">WASTE MANAGEMENT // NEW MATERIAL STREAM</div>
+  <div class="card">
+    <h2 id="s3Title">The hidden cost appears after the procedure.</h2>
+    <div class="waste-items" id="s3Items"></div>
+    <div class="grid grid2">
+      <div>
+        <span class="tag" id="s3Role">WASTE MANAGEMENT OFFICER</span>
+        <p id="s3Quote"></p>
+        <h3 id="s3Chain"></h3>
+        <p class="small" id="s3Note"></p>
+        <div class="grid grid2" style="margin-top:14px">
+          <div class="metric"><div class="metric-label" id="s3ExpLabel">EXPECTED</div><div class="metric-value" id="s3Exp">12 kg/day</div></div>
+          <div class="metric"><div class="metric-label" id="s3CurLabel">CURRENT</div><div class="metric-value red" id="s3Cur">18.4 kg/day</div></div>
+        </div>
+      </div>
+      <div>
+        <svg class="tanksvg" viewBox="0 0 270 210" role="img" aria-label="Capacity tank overflowing">
+          <defs><clipPath id="tankClip"><rect x="44" y="20" width="180" height="160" rx="8"/></clipPath></defs>
+          <rect x="44" y="20" width="180" height="160" rx="8" fill="#08141b"/>
+          <g clip-path="url(#tankClip)">
+            <rect id="tkAmber" x="44" y="180" width="180" height="0" fill="#f2b84b" opacity=".85"/>
+            <rect id="tkRed" x="44" y="180" width="180" height="0" fill="#ff5b68" opacity=".9"/>
+            <g id="tkWave" transform="translate(0 180)"><g class="wavemove"><path id="tkWavePath" d="M20 0q22.5-8 45 0t45 0 45 0 45 0 45 0 45 0 45 0 45 0V12H20Z" fill="#f2b84b" opacity=".6"/></g></g>
+            <rect class="drop d1" x="76" y="0" width="14" height="10" rx="2"/>
+            <rect class="drop d2" x="116" y="0" width="12" height="12" rx="2"/>
+            <rect class="drop d3" x="152" y="0" width="16" height="9" rx="2"/>
+            <rect class="drop d4" x="190" y="0" width="12" height="11" rx="2"/>
+          </g>
+          <rect x="44" y="20" width="180" height="160" rx="8" fill="none" stroke="#3a5662" stroke-width="2"/>
+          <g fill="#91a5ad" font-size="9" font-weight="700" text-anchor="end">
+            <text x="38" y="183">0</text><text x="38" y="133">50</text><text x="38" y="83">100</text><text x="38" y="33">150</text>
+          </g>
+          <line x1="40" x2="228" y1="80" y2="80" stroke="#fff" stroke-width="1.5" stroke-dasharray="5 4"/>
+          <text x="230" y="83" fill="#fff" font-size="8" font-weight="800">LIMIT</text>
+          <text id="tkWarn" x="134" y="13" text-anchor="middle" fill="#ff5b68" font-size="10" font-weight="900" letter-spacing="2" class="warnpulse" opacity="0">OVER CAPACITY</text>
+        </svg>
+        <div class="capnum" id="s3Pct">153%</div>
+        <div class="small" id="s3PctLabel" style="text-align:center">OF PLANNED CAPACITY</div>
+      </div>
+    </div>
+    <div class="alert" style="margin-top:15px"><strong>FICTIONAL ILLUSTRATIVE VALUES</strong><br><span class="small">These numbers are created for the simulation and are not real hospital statistics.</span></div>
+  </div>
+  <div class="footer-nav"><span></span><button class="btn primary" onclick="go(4)">ASSESS TREATMENT OPTIONS →</button></div>
+</section>
+
+<!-- ============ S4 ============ -->
+<section id="s4" class="screen">
+  <div class="eyebrow">WASTE TREATMENT // CAPACITY CRISIS</div>
+  <h2>What do you do with the changed waste stream?</h2>
+  <p>Select an option, then lock in your decision to see what happens.</p>
+  <div class="grid grid3">
+    <button class="card clickable choice-card" data-k="incinerator" onclick="pick4('incinerator')"><span class="tag">01</span><div class="choice-title">SEND TO INCINERATOR</div><p>May reduce waste volume and destroy many biological hazards, but changing waste composition and throughput can create additional operational and emissions-management requirements.</p></button>
+    <button class="card clickable choice-card" data-k="autoclave" onclick="pick4('autoclave')"><span class="tag">02</span><div class="choice-title">SEND TO AUTOCLAVE</div><p>Can treat appropriate infectious waste using heat and pressure, but treated material remains and requires appropriate downstream management.</p></button>
+    <button class="card clickable choice-card" data-k="hold" onclick="pick4('hold')"><span class="tag">03</span><div class="choice-title">HOLD FOR ASSESSMENT</div><p>Avoids immediate treatment overload, but creates a storage and capacity-management problem.</p></button>
+  </div>
+  <div id="confirm4" class="confirm-row hidden"><button class="btn primary" onclick="confirm4()">LOCK IN DECISION</button></div>
+  <div id="treatmentResult" class="outcome hidden"></div>
+  <div class="footer-nav"><span></span><button id="treatmentContinue" class="btn primary hidden" onclick="go(5)">CONTINUE →</button></div>
+</section>
+
+<!-- ============ S5 ============ -->
+<section id="s5" class="screen">
+  <div class="eyebrow">ENVIRONMENTAL HEALTH // SYSTEM VIEW</div>
+  <div class="card">
+    <div class="grid grid2" style="align-items:center">
+      <div>
+        <div class="small" style="font-weight:800;letter-spacing:.12em">CLINICAL SAFETY</div>
+        <div class="meter"><i class="g" style="--from:8%;--to:94%"></i></div>
+        <div class="small" style="font-weight:800;letter-spacing:.12em">WASTE SYSTEM CAPACITY</div>
+        <div class="meter"><i class="r" style="--from:100%;--to:16%"></i></div>
+        <span class="tag">ENVIRONMENTAL HEALTH OFFICER</span>
+        <p>“The question is no longer simply whether the device is safe for the patient.”</p>
+        <p><strong>“The question is whether the entire system is equipped to safely manage what the device leaves behind.”</strong></p>
+      </div>
+      <div id="sysRing"></div>
+    </div>
+    <p style="text-align:center;margin-top:10px">Human health, healthcare systems, workers, communities and the environment are interconnected.</p>
+  </div>
+  <div class="footer-nav"><span></span><button class="btn primary" onclick="go(6)">CALL EMERGENCY BOARD MEETING →</button></div>
+</section>
+
+<!-- ============ S6 ============ -->
+<section id="s6" class="screen">
+  <div class="eyebrow">EMERGENCY BOARD MEETING // RESOURCE ALLOCATION</div>
+  <div class="card" style="margin-bottom:18px">
+    <span class="tag">HOSPITAL ADMINISTRATOR</span>
+    <p>“We cannot simply stop innovation. We also cannot pretend our waste infrastructure has automatically evolved with it.”</p>
+    <div class="budget">₹10,00,000</div>
+    <div class="small">FICTIONAL SIMULATION BUDGET</div>
+  </div>
+  <div class="grid grid3">
+    <button class="card clickable choice-card" data-k="devices" onclick="pick6('devices')"><span class="tag">OPTION A</span><div class="choice-title">INVEST IN MORE ADVANCED MEDICAL DEVICES</div><p>Prioritise clinical technology.</p></button>
+    <button class="card clickable choice-card" data-k="waste" onclick="pick6('waste')"><span class="tag">OPTION B</span><div class="choice-title">UPGRADE WASTE-TREATMENT CAPACITY</div><p>Strengthen the back end of the system.</p></button>
+    <button class="card clickable choice-card" data-k="redesign" onclick="pick6('redesign')"><span class="tag">OPTION C</span><div class="choice-title">REDESIGN THE ENTIRE SYSTEM</div><p>Coordinate technology, segregation, treatment, training and procurement planning.</p></button>
+  </div>
+  <div id="confirm6" class="confirm-row hidden"><button class="btn primary" onclick="confirm6()">APPROVE BUDGET</button></div>
+  <div id="budgetResult" class="outcome hidden"></div>
+  <div id="budgetActions" class="btnrow" style="margin-top:18px"></div>
+</section>
+
+<!-- ============ S7 ============ -->
+<section id="s7" class="screen">
+  <div class="eyebrow">SECOND TWIST // SYSTEM GOVERNANCE</div>
+  <div class="card">
+    <div class="small">HOSPITAL ADMINISTRATOR</div>
+    <h2>WAIT.</h2>
+    <p>“There is one more problem.”</p>
+    <div class="eqrow">
+      <div class="eqcard">
+        <svg viewBox="0 0 64 64"><g class="gear"><circle cx="32" cy="32" r="18" fill="none" stroke="#53b8ff" stroke-width="8" stroke-dasharray="7.07 7.07"/><circle cx="32" cy="32" r="14" fill="#0e1b23" stroke="#53b8ff" stroke-width="3"/><circle cx="32" cy="32" r="5" fill="#53b8ff"/></g></svg>
+        <div class="metric-label" style="margin-top:8px">NEW TECHNOLOGY</div>
+        <div class="small">fast-moving</div>
+      </div>
+      <div class="eqop">+</div>
+      <div class="eqcard">
+        <svg viewBox="0 0 64 64"><g class="gear slow"><circle cx="32" cy="32" r="18" fill="none" stroke="#7d8f97" stroke-width="8" stroke-dasharray="7.07 7.07"/><circle cx="32" cy="32" r="14" fill="#0e1b23" stroke="#7d8f97" stroke-width="3"/><circle cx="32" cy="32" r="5" fill="#7d8f97"/></g></svg>
+        <div class="metric-label" style="margin-top:8px">OLD INFRASTRUCTURE</div>
+        <div class="small">slow-moving</div>
+      </div>
+      <div class="eqop">=</div>
+      <div class="eqcard bad">
+        <svg viewBox="0 0 64 64"><g class="warnflick"><path d="M32 8L58 54H6Z" fill="rgba(255,91,104,.12)" stroke="#ff5b68" stroke-width="3" stroke-linejoin="round"/><path d="M32 24V39" stroke="#ff5b68" stroke-width="4" stroke-linecap="round"/><circle cx="32" cy="46" r="2.6" fill="#ff5b68"/></g></svg>
+        <div class="metric-label red" style="margin-top:8px">SYSTEM MISMATCH</div>
+        <div class="small">gears do not mesh</div>
+      </div>
+    </div>
+    <div class="btnrow" id="revealQBtn"><button class="btn primary" onclick="revealQuestion()">REVEAL THE QUESTION</button></div>
+    <div id="respQuestion" class="hidden">
+      <h3>Who should be responsible for ensuring that new medical technologies are compatible with the hospital's waste-treatment infrastructure?</h3>
+      <div class="grid grid2" style="margin-top:18px" id="respButtons">
+        <button class="btn big" data-r="A" onclick="pickResp('A')">A. DOCTORS</button>
+        <button class="btn big" data-r="B" onclick="pickResp('B')">B. WASTE MANAGEMENT TEAM</button>
+        <button class="btn big" data-r="C" onclick="pickResp('C')">C. HOSPITAL MANAGEMENT</button>
+        <button class="btn big" data-r="D" onclick="pickResp('D')">D. EVERYONE ACROSS THE SYSTEM</button>
+      </div>
+      <div id="confirm7" class="confirm-row hidden"><button class="btn primary" onclick="confirm7()">REVEAL ANSWER</button></div>
+      <div id="responsibilityResult" class="outcome hidden"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S8 ============ -->
+<section id="s8" class="screen">
+  <div class="reveal">
+    <div>
+      <div class="eyebrow">SYSTEM REVEAL</div>
+      <h2>YOU WERE ASKED<br>THE WRONG QUESTION.</h2>
+      <div class="pulse-line"></div>
+      <div class="strike">“Which device is safer?”</div>
+      <div style="font-size:25px;color:var(--muted);margin:18px">↓</div>
+      <div style="font-size:clamp(26px,4vw,45px);font-weight:900">“Is the <span class="green">HEALTHCARE SYSTEM</span> ready for the device?”</div>
+      <div class="cascade">
+        <div class="step" style="--i:0"><span class="num">01</span>MEDICAL INNOVATION</div><div class="link"></div>
+        <div class="step" style="--i:1"><span class="num">02</span>CLINICAL BENEFIT</div><div class="link"></div>
+        <div class="step" style="--i:2"><span class="num">03</span>NEW WASTE STREAM</div><div class="link"></div>
+        <div class="step" style="--i:3"><span class="num">04</span>TREATMENT NEEDS</div><div class="link"></div>
+        <div class="step" style="--i:4"><span class="num">05</span>ENVIRONMENTAL MGMT</div><div class="link"></div>
+        <div class="step" style="--i:5"><span class="num">06</span>PUBLIC HEALTH</div>
+      </div>
+      <p style="font-size:19px"><strong>Healthcare safety does not end when the procedure ends.</strong></p>
+      <button class="btn primary" onclick="go(9)">NEXT →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S9 ============ -->
+<section id="s9" class="screen">
+  <div class="reveal">
+    <div>
+      <div class="eyebrow">AUDIENCE DISCUSSION</div>
+      <div id="voteIntro">
+        <h2>One last question for the room.</h2>
+        <button class="btn primary" onclick="revealVote()">REVEAL THE QUESTION</button>
+      </div>
+      <div id="voteBody" class="hidden">
+        <div class="question">YOU SAVED THE PATIENT.<br><span class="accent">DID YOU SAVE THE SYSTEM?</span></div>
+        <p style="margin-top:22px">Discuss as a group. Take at least one minute, and run the clock however you need.</p>
+        <div class="ringwrap big" id="dRingWrap" style="margin:10px auto 22px"></div>
+        <div class="btnrow">
+          <button class="btn primary" id="dToggle" onclick="toggleDiscussion()">START DISCUSSION</button>
+          <button class="btn amber" onclick="addTime(30)">+30 SEC</button>
+          <button class="btn amber" onclick="addTime(60)">+1 MIN</button>
+          <button class="btn" onclick="resetDiscussion()">RESET</button>
+          <button class="btn blue" onclick="go(10)">CONTINUE →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ S10 ============ -->
+<section id="s10" class="screen">
+  <div class="eyebrow">THE PARADOX THROUGH THE SDGs</div>
+  <h2>Four goals. One connected health system.</h2>
+  <div class="sdgwrap">
+    <svg class="sdgsvg" viewBox="0 0 380 380" role="img" aria-label="Four SDGs connected to one health system">
+      <g fill="none">
+        <path class="sdgline" d="M190 190V62"/><path class="sdgline" d="M190 190H318"/><path class="sdgline" d="M190 190V318"/><path class="sdgline" d="M190 190H62"/>
+        <path class="sdgline" style="opacity:.45" d="M190 62A128 128 0 0 1 318 190A128 128 0 0 1 190 318A128 128 0 0 1 62 190A128 128 0 0 1 190 62"/>
+      </g>
+      <circle cx="190" cy="190" r="46" fill="#0e1b23" stroke="#38d39f" stroke-width="2"/>
+      <circle class="sdgpulse" cx="190" cy="190" r="46" fill="none" stroke="#38d39f" stroke-width="2" style="transform-box:fill-box;transform-origin:center;animation:ping 3s ease-out infinite"/>
+      <text x="190" y="186" text-anchor="middle" fill="#38d39f" font-size="11" font-weight="900" letter-spacing="1.5">HEALTH</text>
+      <text x="190" y="200" text-anchor="middle" fill="#38d39f" font-size="11" font-weight="900" letter-spacing="1.5">SYSTEM</text>
+
+      <g class="sdgnode" data-sdg="3" style="color:#5fd068">
+        <circle class="sdgpulse" cx="190" cy="62" r="36" stroke="#5fd068"/>
+        <circle class="nc" cx="190" cy="62" r="36" fill="#0e1b23" stroke="#5fd068" stroke-width="3"/>
+        <text x="190" y="56" text-anchor="middle" fill="#5fd068" font-size="9" font-weight="800">SDG</text>
+        <text x="190" y="76" text-anchor="middle" fill="#fff" font-size="22" font-weight="900">3</text>
+      </g>
+      <g class="sdgnode" data-sdg="12" style="color:#e0a53a">
+        <circle class="sdgpulse" cx="318" cy="190" r="36" stroke="#e0a53a" style="animation-delay:.75s"/>
+        <circle class="nc" cx="318" cy="190" r="36" fill="#0e1b23" stroke="#e0a53a" stroke-width="3"/>
+        <text x="318" y="184" text-anchor="middle" fill="#e0a53a" font-size="9" font-weight="800">SDG</text>
+        <text x="318" y="204" text-anchor="middle" fill="#fff" font-size="22" font-weight="900">12</text>
+      </g>
+      <g class="sdgnode" data-sdg="6" style="color:#3cc8ee">
+        <circle class="sdgpulse" cx="190" cy="318" r="36" stroke="#3cc8ee" style="animation-delay:1.5s"/>
+        <circle class="nc" cx="190" cy="318" r="36" fill="#0e1b23" stroke="#3cc8ee" stroke-width="3"/>
+        <text x="190" y="312" text-anchor="middle" fill="#3cc8ee" font-size="9" font-weight="800">SDG</text>
+        <text x="190" y="332" text-anchor="middle" fill="#fff" font-size="22" font-weight="900">6</text>
+      </g>
+      <g class="sdgnode" data-sdg="13" style="color:#55b06b">
+        <circle class="sdgpulse" cx="62" cy="190" r="36" stroke="#55b06b" style="animation-delay:2.25s"/>
+        <circle class="nc" cx="62" cy="190" r="36" fill="#0e1b23" stroke="#55b06b" stroke-width="3"/>
+        <text x="62" y="184" text-anchor="middle" fill="#55b06b" font-size="9" font-weight="800">SDG</text>
+        <text x="62" y="204" text-anchor="middle" fill="#fff" font-size="22" font-weight="900">13</text>
+      </g>
+    </svg>
+    <div class="sdgcards">
+      <div class="card sdgcard" data-sdg="3" style="--c:#5fd068"><div class="sdg-num">SDG 3</div><h3>GOOD HEALTH AND WELL-BEING</h3><p>Protecting patients from infection and unsafe care.</p></div>
+      <div class="card sdgcard" data-sdg="12" style="--c:#e0a53a"><div class="sdg-num">SDG 12</div><h3>RESPONSIBLE CONSUMPTION AND PRODUCTION</h3><p>Managing material use, waste generation and treatment responsibly.</p></div>
+      <div class="card sdgcard" data-sdg="6" style="--c:#3cc8ee"><div class="sdg-num">SDG 6</div><h3>CLEAN WATER AND SANITATION</h3><p>Preventing poorly managed healthcare waste from affecting environmental health.</p></div>
+      <div class="card sdgcard" data-sdg="13" style="--c:#55b06b"><div class="sdg-num">SDG 13</div><h3>CLIMATE ACTION</h3><p>Considering energy use and emissions associated with healthcare waste treatment.</p></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px;text-align:center;border-color:#376151">
+    <h3 class="green">SDG 3 cannot be pursued in isolation from the environmental systems that support health.</h3>
+  </div>
+  <div class="footer-nav"><span></span><button class="btn primary" onclick="go(11)">SEE FINAL SYSTEM SCORE →</button></div>
+</section>
+
+<!-- ============ S11 ============ -->
+<section id="s11" class="screen">
+  <div class="hero">
+    <div class="hero-inner" style="max-width:900px">
+      <div class="eyebrow">SIMULATION COMPLETE // SYSTEM REPORT</div>
+      <h2>CLINICAL SAFETY <span class="red">≠</span> SYSTEM SAFETY</h2>
+      <div class="grid grid3" id="finalRings" style="margin:35px 0"></div>
+      <p id="finalAnalysis" style="font-size:17px;max-width:780px;margin:0 auto 24px"></p>
+      <div class="pulse-line"></div>
+      <h3>THE GOAL IS NOT TO CHOOSE BETWEEN THE PATIENT AND THE PLANET.</h3>
+      <p><strong>THE GOAL IS TO DESIGN A HEALTHCARE SYSTEM THAT PROTECTS BOTH.</strong></p>
+      <div class="btnrow" style="margin-top:25px">
+        <button class="btn primary" onclick="restart()">RESTART SIMULATION</button>
+        <button class="btn" onclick="window.print()">PRINT / SAVE REPORT</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+<div class="progress" id="progress"></div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="modal-box"><div id="modalContent"></div><div class="btnrow" style="justify-content:flex-end;margin-top:20px"><button class="btn primary" onclick="closeModal()">CLOSE</button></div></div></div>
+</div>
+
+<script>
+const state={
+  screen:0, device:null, treatment:null, budget:null, responsibility:null,
+  clinical:70, env:50, system:45, timer:null, discussionTimer:null, alertTimeout:null,
+  pending:{s4:null,s6:null,s7:null},
+  dRemaining:60, dTotal:60, dRunning:false, dStarted:false
+};
+const screens=12;
+const DISCUSSION_SECONDS=60;
+
+/* ---------- Animation helpers ---------- */
+const tweenTokens={};
+function tween(key,from,to,ms,fn){
+  tweenTokens[key]=(tweenTokens[key]||0)+1;
+  const my=tweenTokens[key], t0=performance.now();
+  function f(t){
+    if(tweenTokens[key]!==my) return;
+    const k=Math.min(1,(t-t0)/ms), e=1-Math.pow(1-k,3);
+    fn(from+(to-from)*e);
+    if(k<1) requestAnimationFrame(f);
+  }
+  requestAnimationFrame(f);
+}
+function ringSVG(size,r,color,id){
+  const c=2*Math.PI*r, h=size/2;
+  return `<svg viewBox="0 0 ${size} ${size}" class="ringsvg"><circle class="ring-track" cx="${h}" cy="${h}" r="${r}"/><circle id="${id}" class="ring-prog" cx="${h}" cy="${h}" r="${r}" stroke="${color}" transform="rotate(-90 ${h} ${h})" style="stroke-dasharray:${c};stroke-dashoffset:${c};filter:drop-shadow(0 0 6px ${color})"/></svg>`;
+}
+function setRing(id,frac){
+  const el=document.getElementById(id); if(!el) return;
+  const c=2*Math.PI*parseFloat(el.getAttribute('r'));
+  el.style.strokeDashoffset=c*(1-Math.max(0,Math.min(1,frac)));
+}
+
+/* ---------- History (powers the BACK button) ---------- */
+const history=[];
+const snapKeys=['device','treatment','budget','responsibility','clinical','env','system'];
+function snap(){const o={};snapKeys.forEach(k=>o[k]=state[k]);return o}
+function applySnap(o){snapKeys.forEach(k=>state[k]=o[k])}
+function restoreEntry(){const e=history[history.length-1]; if(e) applySnap(e.snap)}
+
+function go(n){
+  history.push({n:n,snap:snap()});
+  enter(n);
+}
+function back(){
+  if(history.length<2) return;
+  history.pop();
+  const e=history[history.length-1];
+  applySnap(e.snap);
+  enter(e.n);
+}
+
+function resetScreenUI(n){
+  const clearSel=sel=>document.querySelectorAll(sel).forEach(b=>b.classList.remove('selected','picked-right','picked-wrong'));
+  if(n===2||n===3) renderDevice();
+  if(n===2){
+    document.getElementById('clinicalAlert').classList.add('hidden');
+    setRing('safetyRing',0); document.getElementById('safetyNum').textContent='0';
+  }
+  if(n===3) drawTank(0);
+  if(n===4){
+    state.pending.s4=null; clearSel('#s4 .choice-card');
+    ['confirm4','treatmentResult','treatmentContinue'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+  }
+  if(n===6){
+    state.pending.s6=null; clearSel('#s6 .choice-card');
+    document.getElementById('confirm6').classList.add('hidden');
+    document.getElementById('budgetResult').classList.add('hidden');
+    document.getElementById('budgetActions').innerHTML='';
+  }
+  if(n===7){
+    state.pending.s7=null; clearSel('#respButtons .btn');
+    document.getElementById('revealQBtn').classList.remove('hidden');
+    document.getElementById('respQuestion').classList.add('hidden');
+    document.getElementById('confirm7').classList.add('hidden');
+    document.getElementById('responsibilityResult').classList.add('hidden');
+  }
+  if(n===9){
+    document.getElementById('voteIntro').classList.remove('hidden');
+    document.getElementById('voteBody').classList.add('hidden');
+    resetDiscussion();
+  }
+}
+
+function enter(n){
+  clearInterval(state.timer);
+  clearTimeout(state.alertTimeout);
+  pauseDiscussion();
+  resetScreenUI(n);
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s'+n).classList.add('active');
+  state.screen=n;
+  document.getElementById('phaseLabel').textContent=
+    ['SYSTEM READY','EMERGENCY SURGERY','CLINICAL DECISION','WASTE ALERT','TREATMENT CRISIS','ENVIRONMENTAL HEALTH','BOARD MEETING','SYSTEM GOVERNANCE','SYSTEM REVEAL','AUDIENCE DISCUSSION','SDG CONNECTION','FINAL REPORT'][n];
+  document.getElementById('progress').style.width=((n)/(screens-1)*100)+'%';
+  document.getElementById('backBtn').classList.toggle('hidden',history.length<2);
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(n===1) startDecisionTimer();
+  if(n===2){
+    animateSafety();
+    state.alertTimeout=setTimeout(()=>document.getElementById('clinicalAlert').classList.remove('hidden'),1600);
+  }
+  if(n===3) animateTank();
+  if(n===11) renderFinal();
+}
+
+/* ---------- Device choice ---------- */
+const DEVICE_CONTENT={
+  single:{
+    s2Eyebrow:'CLINICAL DECISION // SINGLE-USE DEVICE SELECTED',
+    doctor:'“The new device arrives sterile and ready to use. It eliminates the need for reprocessing and reduces concerns about contamination between patients.”',
+    ico:'“From an infection-control perspective, single-use equipment can provide important advantages.”',
+    arrow:'↑↑↑', result:'SURGERY SUCCESSFUL', safety:96,
+    alert:'Biomedical waste volume has exceeded today\'s planned treatment capacity.',
+    s3Eyebrow:'WASTE MANAGEMENT // NEW MATERIAL STREAM',
+    s3Title:'The hidden cost appears after the procedure.',
+    items:['DISPOSABLE TUBING','SYRINGES','GLOVES','PACKAGING','DEVICE COMPONENTS','BIO-PLASTIC MATERIAL'],
+    role:'WASTE MANAGEMENT OFFICER',
+    quote:'“The clinical team solved its immediate problem. But the waste stream has changed.”',
+    chain:'NEW MEDICAL TECHNOLOGY → MORE SINGLE-USE MATERIAL → MORE WASTE TO MANAGE',
+    note:'Not every component is necessarily hazardous. Appropriate segregation remains important.',
+    expLabel:'EXPECTED WASTE', exp:'12 kg/day', curLabel:'CURRENT WASTE', cur:'18.4 kg/day', lvl:153, pctLabel:'OF PLANNED CAPACITY'
+  },
+  reusable:{
+    s2Eyebrow:'CLINICAL DECISION // REUSABLE DEVICE SELECTED',
+    doctor:'“The reusable device is proven and familiar. It is safe for this patient only if it has been properly cleaned, inspected and sterilized before use.”',
+    ico:'“Reprocessing can be fully effective, but it depends on every step being followed correctly. Any gap in cleaning, sterilization or tracking becomes an infection risk.”',
+    arrow:'↑↑', result:'SURGERY SUCCESSFUL — SAFETY DEPENDS ON REPROCESSING', safety:88,
+    alert:'Sterilization and reprocessing demand has exceeded today\'s planned unit capacity.',
+    s3Eyebrow:'STERILIZATION UNIT // REPROCESSING LOAD',
+    s3Title:'The hidden cost moves from disposal to reprocessing.',
+    items:['STERILIZATION WRAPS','DETERGENT + CHEMICAL EFFLUENT','WATER + STEAM USE','ENERGY FOR AUTOCLAVE CYCLES','WORN DEVICE PARTS','STAFF TIME + TRACKING'],
+    role:'STERILIZATION UNIT MANAGER',
+    quote:'“Each reusable device creates less solid waste, but it creates work: cleaning, inspection, sterilization, drying and tracking, every single time.”',
+    chain:'REUSABLE TECHNOLOGY → MORE REPROCESSING CYCLES → MORE WATER, ENERGY AND CHEMICALS TO MANAGE',
+    note:'Reusable devices avoid a large single-use waste stream, but they shift the burden to water, energy, effluent and staff capacity.',
+    expLabel:'EXPECTED CYCLES', exp:'40 cycles/day', curLabel:'CURRENT CYCLES', cur:'58 cycles/day', lvl:145, pctLabel:'OF PLANNED REPROCESSING CAPACITY'
+  }
+};
+function curDevice(){return DEVICE_CONTENT[state.device||'single']}
+
+function renderDevice(){
+  const c=curDevice();
+  const set=(id,v)=>{document.getElementById(id).textContent=v};
+  set('s2Eyebrow',c.s2Eyebrow); set('s2Doctor',c.doctor); set('s2Ico',c.ico);
+  set('s2Arrow',c.arrow); set('s2Result',c.result); set('s2AlertText',c.alert);
+  set('s3Eyebrow',c.s3Eyebrow); set('s3Title',c.s3Title); set('s3Role',c.role);
+  set('s3Quote',c.quote); set('s3Chain',c.chain); set('s3Note',c.note);
+  set('s3ExpLabel',c.expLabel); set('s3Exp',c.exp); set('s3CurLabel',c.curLabel);
+  set('s3Cur',c.cur); set('s3PctLabel',c.pctLabel);
+  set('s3Pct',c.lvl+'%');
+  document.getElementById('s3Items').innerHTML=c.items.map(i=>`<span class="waste">${i}</span>`).join('');
+}
+
+function animateSafety(){
+  const target=curDevice().safety;
+  tween('safety',0,target,1500,v=>{
+    setRing('safetyRing',v/100);
+    document.getElementById('safetyNum').textContent=Math.round(v);
+  });
+}
+
+/* Capacity tank */
+function drawTank(v){
+  const amberH=Math.min(v,100), redH=Math.max(0,v-100);
+  const a=document.getElementById('tkAmber'), r=document.getElementById('tkRed');
+  a.setAttribute('y',180-amberH); a.setAttribute('height',amberH);
+  r.setAttribute('y',180-v); r.setAttribute('height',redH);
+  document.getElementById('tkWave').setAttribute('transform',`translate(0 ${180-v})`);
+  document.getElementById('tkWavePath').setAttribute('fill',v>100?'#ff5b68':'#f2b84b');
+  document.getElementById('tkWarn').setAttribute('opacity',v>100?1:0);
+  document.getElementById('s3Pct').textContent=Math.round(v)+'%';
+}
+function animateTank(){
+  const lvl=curDevice().lvl;
+  tween('tank',0,lvl,2000,drawTank);
+}
+
+function startDecisionTimer(){
+  let t=30;
+  const bar=document.getElementById('timerBar');
+  bar.classList.remove('low'); bar.style.width='100%';
+  document.getElementById('decisionTimer').textContent='00:'+String(t).padStart(2,'0');
+  state.timer=setInterval(()=>{
+    t--;
+    document.getElementById('decisionTimer').textContent='00:'+String(Math.max(t,0)).padStart(2,'0');
+    bar.style.width=(Math.max(t,0)/30*100)+'%';
+    bar.classList.toggle('low',t<=10);
+    if(t<=0){clearInterval(state.timer); chooseDevice('single',true)}
+  },1000);
+}
+
+function chooseDevice(type,timeout=false){
+  clearInterval(state.timer); state.device=type;
+  if(type==='single'){
+    state.clinical+=25; state.system-=5; state.env-=8;
+  }else{
+    state.clinical+=12; state.env+=7; state.system+=5;
+  }
+  if(timeout) toast('Time expired. The board defaulted to the single-use pathway.');
+  go(2);
+}
+
+/* ---------- Treatment (select -> lock in -> result) ---------- */
+function treatViz(type){
+  if(type==='incinerator') return `<svg class="vizsvg" viewBox="0 0 150 118" aria-hidden="true">
+    <rect x="30" y="56" width="76" height="52" rx="6" fill="#0e1b23" stroke="#ff9b4b"/>
+    <rect x="86" y="24" width="14" height="34" fill="#16303c" stroke="#ff9b4b" stroke-opacity=".6"/>
+    <path class="flame" d="M68 102C52 90 58 74 68 66C69 77 82 79 78 94C77 98 73 101 68 102Z" fill="#ff9b4b"/>
+    <circle class="smoke" cx="93" cy="22" r="6" fill="#8aa0a8"/><circle class="smoke s2" cx="93" cy="22" r="6" fill="#8aa0a8"/><circle class="smoke s3" cx="93" cy="22" r="6" fill="#8aa0a8"/>
+    <line x1="14" y1="108" x2="136" y2="108" stroke="#35505c"/></svg>`;
+  if(type==='autoclave') return `<svg class="vizsvg" viewBox="0 0 150 118" aria-hidden="true">
+    <rect x="14" y="48" width="104" height="52" rx="24" fill="#0e1b23" stroke="#53b8ff"/>
+    <circle cx="44" cy="74" r="15" fill="none" stroke="#53b8ff" stroke-opacity=".6"/><circle cx="44" cy="74" r="3" fill="#53b8ff"/>
+    <circle cx="100" cy="30" r="15" fill="#08141b" stroke="#53b8ff"/>
+    <line class="needle" x1="100" y1="30" x2="100" y2="19" stroke="#ff5b68" stroke-width="2" stroke-linecap="round"/>
+    <path d="M100 45V50" stroke="#53b8ff"/>
+    <circle class="smoke" cx="64" cy="46" r="5" fill="#9fdcff"/><circle class="smoke s2" cx="76" cy="46" r="5" fill="#9fdcff"/><circle class="smoke s3" cx="88" cy="46" r="5" fill="#9fdcff"/></svg>`;
+  return `<svg class="vizsvg" viewBox="0 0 150 118" aria-hidden="true">
+    <line x1="18" y1="106" x2="132" y2="106" stroke="#91a5ad"/>
+    <rect class="crate c1" x="28" y="90" width="32" height="16"/><rect class="crate c2" x="64" y="90" width="32" height="16"/>
+    <rect class="crate c3" x="46" y="73" width="32" height="16"/><rect class="crate c4" x="82" y="73" width="32" height="16"/>
+    <line x1="18" y1="44" x2="132" y2="44" stroke="#ff5b68" stroke-dasharray="4 3"/>
+    <text x="22" y="38" fill="#ff5b68" font-size="8" font-weight="800">STORAGE LIMIT</text></svg>`;
+}
+function pick4(k){
+  restoreEntry();
+  state.pending.s4=k;
+  document.querySelectorAll('#s4 .choice-card').forEach(b=>b.classList.toggle('selected',b.dataset.k===k));
+  document.getElementById('treatmentResult').classList.add('hidden');
+  document.getElementById('treatmentContinue').classList.add('hidden');
+  document.getElementById('confirm4').classList.remove('hidden');
+}
+function confirm4(){
+  if(!state.pending.s4) return;
+  document.getElementById('confirm4').classList.add('hidden');
+  treatment(state.pending.s4);
+}
+function treatment(type){
+  state.treatment=type;
+  const box=document.getElementById('treatmentResult');
+  let title='',text='',tone='';
+  if(type==='incinerator'){
+    state.env-=2; state.system+=3; tone='amberText';
+    title='INCINERATOR SELECTED';
+    text='The waste stream may be reduced in volume and many biological hazards can be destroyed, but material composition and throughput must be checked against the actual treatment system.';
+  }else if(type==='autoclave'){
+    state.env+=2; state.system+=1; tone='blueText';
+    title='AUTOCLAVE SELECTED';
+    text='Appropriate infectious waste can be treated using heat and pressure. However, the physical material remains and needs appropriate downstream management.';
+  }else{
+    state.env-=3; state.system-=4; tone='red';
+    title='WASTE HELD FOR ASSESSMENT';
+    text='Immediate treatment overload is avoided, but storage capacity, segregation, worker safety and downstream treatment still have to be managed.';
+  }
+  box.innerHTML=`<div class="outflex">${treatViz(type)}<div><h3 class="${tone}">${title}</h3><p>${text}</p><div class="small">The simulation does not label any treatment method universally good or bad. Suitability depends on the waste stream and system. You can select another option to compare.</div></div></div>`;
+  box.classList.remove('hidden');
+  document.getElementById('treatmentContinue').classList.remove('hidden');
+}
+
+/* ---------- Budget (select -> approve -> result) ---------- */
+function pick6(k){
+  restoreEntry();
+  state.pending.s6=k;
+  document.querySelectorAll('#s6 .choice-card').forEach(b=>b.classList.toggle('selected',b.dataset.k===k));
+  document.getElementById('budgetResult').classList.add('hidden');
+  document.getElementById('budgetActions').innerHTML='';
+  document.getElementById('confirm6').classList.remove('hidden');
+}
+function confirm6(){
+  if(!state.pending.s6) return;
+  document.getElementById('confirm6').classList.add('hidden');
+  budget(state.pending.s6);
+}
+function kpi(label,w,cls,txt,tone){
+  return `<div class="kpi">${label}<div class="kbar"><i class="${cls}" data-w="${w}"></i></div><strong${tone?` class="${tone}"`:''}>${txt}</strong></div>`;
+}
+function budget(type){
+  state.budget=type;
+  const box=document.getElementById('budgetResult');
+  const actions=document.getElementById('budgetActions');
+  let html='';
+  if(type==='devices'){
+    state.clinical+=12; state.env-=8; state.system-=10;
+    html=`<h3 class="green">CLINICAL BENEFIT ↑↑</h3><div class="kpis">${kpi('CLINICAL',86,'g','↑↑','green')}${kpi('WASTE VOLUME',90,'r','↑↑','red')}${kpi('SYSTEM PRESSURE',88,'r','↑↑','red')}</div><p>Environmental Officer: “We improved the device without improving the system around it.”</p>`;
+  }else if(type==='waste'){
+    state.env+=14; state.system+=10;
+    html=`<h3 class="blueText">WASTE MANAGEMENT CAPACITY ↑↑</h3><div class="kpis">${kpi('CAPACITY',84,'g','↑↑','green')}${kpi('ENVIRONMENTAL RISK MANAGEMENT',82,'g','↑↑','green')}${kpi('CLINICAL TECHNOLOGY',45,'n','UNCHANGED','')}</div><p>Doctor: “We have improved the back end of the system, but the clinical technology still has room for improvement.”</p>`;
+  }else{
+    state.clinical+=6; state.env+=10; state.system+=20;
+    html=`<h3 class="green">SYSTEM REDESIGN</h3><p><strong>Four connected actions:</strong></p><div class="waste-items"><span class="waste">1. APPROPRIATE DEVICE SELECTION</span><span class="waste">2. WASTE SEGREGATION</span><span class="waste">3. TREATMENT-CAPACITY UPGRADE</span><span class="waste">4. STAFF TRAINING + PROCUREMENT PLANNING</span></div><div class="kpis">${kpi('CLINICAL SAFETY',74,'g','↑','green')}${kpi('ENVIRONMENTAL MANAGEMENT',80,'g','↑','green')}${kpi('SYSTEM RESILIENCE',96,'b','↑↑↑','blueText')}</div><p>Higher initial investment. Longer implementation time. Greater coordination required.</p>`;
+  }
+  box.innerHTML=html; box.classList.remove('hidden');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>box.querySelectorAll('.kbar i').forEach(i=>i.style.width=i.dataset.w+'%')));
+  actions.innerHTML=`<button class="btn" onclick="budgetReset()">TRY ANOTHER STRATEGY</button><button class="btn primary" onclick="go(7)">CONTINUE →</button>`;
+}
+function budgetReset(){
+  restoreEntry();
+  state.pending.s6=null;
+  document.querySelectorAll('#s6 .choice-card').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('confirm6').classList.add('hidden');
+  document.getElementById('budgetResult').classList.add('hidden');
+  document.getElementById('budgetActions').innerHTML='';
+}
+
+/* ---------- Responsibility (reveal question -> select -> reveal answer) ---------- */
+const RESP={
+  A:{
+    verdict:'partial', label:'PARTIALLY RIGHT — BUT INCOMPLETE', title:'Doctors alone cannot own this.',
+    why:'Doctors understand clinical need and patient safety better than anyone, so their input is essential. But they do not control procurement budgets, treatment plant capacity, segregation systems or downstream disposal. Making them solely responsible would put an impossible burden on the people whose job is to treat patients.',
+    gap:'What is missing: waste, engineering, procurement and environmental expertise.'
+  },
+  B:{
+    verdict:'partial', label:'PARTIALLY RIGHT — BUT TOO LATE', title:'The waste team is involved too late.',
+    why:'The waste management team knows what the treatment system can handle and must absolutely be consulted. But if they only learn about a device after it has been purchased and used, they can only react. Compatibility has to be checked before a technology is chosen, not after the waste appears.',
+    gap:'What is missing: clinical, procurement and leadership input at the decision stage.'
+  },
+  C:{
+    verdict:'partial', label:'PARTIALLY RIGHT — BUT NOT ENOUGH', title:'Management provides authority, not full knowledge.',
+    why:'Hospital management controls budgets, infrastructure and policy, so it must enable and enforce compatibility checks. But management does not run the operating room or the waste yard. Without frontline knowledge from clinicians, biomedical engineers and waste workers, decisions risk being well-funded but poorly informed.',
+    gap:'What is missing: the people who actually use the device and handle what it leaves behind.'
+  },
+  D:{
+    verdict:'right', label:'CORRECT — SHARED RESPONSIBILITY', title:'Responsibility cannot sit with one department alone.',
+    why:'Clinical teams choose technologies. Procurement teams purchase them. Biomedical engineers understand the equipment. Waste teams manage the resulting waste. Environmental teams assess downstream impacts. Management provides infrastructure and resources. Compatibility only works when all of them review a technology together, before it is adopted.',
+    gap:'The paradox exists because these decisions are often made separately.'
+  }
+};
+
+function revealQuestion(){
+  document.getElementById('revealQBtn').classList.add('hidden');
+  document.getElementById('respQuestion').classList.remove('hidden');
+}
+function pickResp(a){
+  restoreEntry();
+  state.pending.s7=a;
+  document.querySelectorAll('#respButtons .btn').forEach(b=>{
+    b.classList.remove('picked-right','picked-wrong');
+    b.classList.toggle('selected',b.dataset.r===a);
+  });
+  document.getElementById('responsibilityResult').classList.add('hidden');
+  document.getElementById('confirm7').classList.remove('hidden');
+}
+function confirm7(){
+  if(!state.pending.s7) return;
+  document.getElementById('confirm7').classList.add('hidden');
+  responsibility(state.pending.s7);
+}
+function responsibility(answer){
+  state.responsibility=answer;
+  if(answer==='D'){state.system+=12;state.env+=5}else{state.system-=2}
+  const r=RESP[answer];
+  document.querySelectorAll('#respButtons .btn').forEach(b=>{
+    b.classList.remove('selected','picked-right','picked-wrong');
+    if(b.dataset.r==='D') b.classList.add('picked-right');
+    else if(b.dataset.r===answer) b.classList.add('picked-wrong');
+  });
+  const box=document.getElementById('responsibilityResult');
+  const tone=r.verdict==='right'?'green':'amberText';
+  box.innerHTML=`<div class="verdict ${r.verdict}">${r.label}</div>
+  <h3 class="${tone}">${r.title}</h3>
+  <p>${r.why}</p>
+  <p><strong>${r.gap}</strong></p>
+  ${answer!=='D'?'<p class="small">Option D is marked as the best answer. Select another option to compare explanations.</p>':''}
+  <button class="btn primary" onclick="go(8)">CONTINUE →</button>`;
+  box.classList.remove('hidden');
+}
+
+/* ---------- Audience discussion (1 min default, full control) ---------- */
+function revealVote(){
+  document.getElementById('voteIntro').classList.add('hidden');
+  document.getElementById('voteBody').classList.remove('hidden');
+  drawDiscussion();
+}
+function fmt(t){
+  const m=Math.floor(t/60), s=t%60;
+  return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+function drawDiscussion(){
+  const el=document.getElementById('discussionTimer');
+  const btn=document.getElementById('dToggle');
+  if(!el||!btn) return;
+  el.textContent=fmt(state.dRemaining);
+  const ring=document.getElementById('dRing');
+  if(ring) ring.setAttribute('stroke',state.dRemaining<=10?'#ff5b68':'#f2b84b');
+  setRing('dRing',state.dTotal>0?state.dRemaining/state.dTotal:0);
+  if(state.dRunning) btn.textContent='PAUSE';
+  else if(!state.dStarted) btn.textContent='START DISCUSSION';
+  else if(state.dRemaining<=0) btn.textContent='RESTART';
+  else btn.textContent='RESUME';
+}
+function toggleDiscussion(){
+  if(state.dRunning) pauseDiscussion(); else startDiscussion();
+}
+function startDiscussion(){
+  if(state.dRemaining<=0){state.dRemaining=DISCUSSION_SECONDS;state.dTotal=DISCUSSION_SECONDS}
+  state.dStarted=true; state.dRunning=true;
+  clearInterval(state.discussionTimer);
+  state.discussionTimer=setInterval(()=>{
+    state.dRemaining--;
+    if(state.dRemaining<=0){
+      state.dRemaining=0;
+      clearInterval(state.discussionTimer);
+      state.dRunning=false;
+      toast('Time is up. Add more time or continue.');
+    }
+    drawDiscussion();
+  },1000);
+  drawDiscussion();
+}
+function pauseDiscussion(){
+  clearInterval(state.discussionTimer);
+  state.dRunning=false;
+  drawDiscussion();
+}
+function addTime(s){
+  state.dRemaining+=s; state.dTotal+=s;
+  drawDiscussion();
+}
+function resetDiscussion(){
+  clearInterval(state.discussionTimer);
+  state.dRunning=false; state.dStarted=false;
+  state.dRemaining=DISCUSSION_SECONDS; state.dTotal=DISCUSSION_SECONDS;
+  drawDiscussion();
+}
+
+/* ---------- Final report ---------- */
+function renderFinal(){
+  const clamp=x=>Math.max(0,Math.min(100,Math.round(x)));
+  const c=clamp(state.clinical), e=clamp(state.env), s=clamp(state.system);
+  const mk=(id,label,color)=>`<div class="metric ringmetric"><div class="ringwrap">${ringSVG(130,54,color,id)}<div class="ringcenter"><b id="${id}Num">0</b><span>/100</span></div></div><div class="metric-label">${label}</div></div>`;
+  const envColor=e>=65?'#38d39f':(e>=45?'#f2b84b':'#ff5b68');
+  document.getElementById('finalRings').innerHTML=
+    mk('rgC','CLINICAL SAFETY','#38d39f')+mk('rgE','ENVIRONMENTAL MANAGEMENT',envColor)+mk('rgS','SYSTEM RESILIENCE','#53b8ff');
+  [['rgC',c],['rgE',e],['rgS',s]].forEach(([id,v])=>{
+    tween(id,0,v,1600,x=>{setRing(id,x/100);document.getElementById(id+'Num').textContent=Math.round(x)});
+  });
+  let analysis='';
+  if(s>=75 && e>=65) analysis='Your strongest outcome came from treating the hospital as one connected system. The simulation rewarded coordination between clinical innovation, waste management, infrastructure, procurement and environmental health.';
+  else if(c>=85 && e<55) analysis='You achieved strong immediate clinical safety, but the system absorbed additional waste pressure without enough environmental or infrastructure adaptation. The patient was protected, but the system remained vulnerable.';
+  else if(e>=65 && c<80) analysis='You strengthened downstream waste management, but clinical technology and infection-control priorities were not advanced at the same pace. Back-end resilience alone cannot solve the whole paradox.';
+  else analysis='The result shows why isolated decisions create trade-offs. Sustainable healthcare requires clinical safety, environmental protection, infrastructure planning and cross-departmental decision-making to evolve together.';
+  document.getElementById('finalAnalysis').textContent=analysis;
+}
+
+/* ---------- Static diagram builders ---------- */
+const ICONS={
+  patient:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 4-8 8-8s8 3 8 8"/>',
+  hospital:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/>',
+  worker:'<path d="M5 15a7 7 0 0 1 14 0z"/><path d="M3 18h18M12 6v3"/>',
+  treat:'<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/>',
+  leaf:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15"/><path d="M5 19c3-4 6-6 9-8"/>',
+  people:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-4 3-6 6-6s6 2 6 6M15 14c3 0 6 2 6 5"/>'
+};
+function buildSystemRing(){
+  const cx=260, cy=180, R=108;
+  const nodes=[['PATIENT','patient','#53b8ff'],['HOSPITAL','hospital','#38d39f'],['WASTE WORKER','worker','#f2b84b'],['TREATMENT SYSTEM','treat','#ff9b4b'],['ENVIRONMENT','leaf','#38d39f'],['COMMUNITY','people','#53b8ff']];
+  let s=`<svg class="syssvg" viewBox="0 0 520 370" role="img" aria-label="Connected one-health system">`;
+  s+=`<circle class="orbit" cx="${cx}" cy="${cy}" r="${R}"/>`;
+  for(let k=0;k<3;k++){
+    s+=`<circle r="4.5" fill="#38d39f" style="filter:drop-shadow(0 0 6px #38d39f)"><animateMotion dur="9s" begin="${-k*3}s" repeatCount="indefinite" path="M${cx} ${cy-R} a${R} ${R} 0 1 1 0 ${2*R} a${R} ${R} 0 1 1 0 ${-2*R}"/></circle>`;
+  }
+  nodes.forEach((n,i)=>{
+    const a=(-90+60*i)*Math.PI/180, x=cx+R*Math.cos(a), y=cy+R*Math.sin(a);
+    const lx=cx+(R+52)*Math.cos(a), ly=cy+(R+52)*Math.sin(a)+4;
+    s+=`<circle class="halo" cx="${x}" cy="${y}" r="30" stroke="${n[2]}" style="animation-delay:${i*1.5}s"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="28" fill="#0e1b23" stroke="${n[2]}" stroke-width="2.5"/>`;
+    s+=`<g transform="translate(${x-12} ${y-12})" fill="none" stroke="${n[2]}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n[1]]}</g>`;
+    s+=`<text class="nodelabel" x="${lx}" y="${ly}" text-anchor="middle">${n[0]}</text>`;
+  });
+  s+=`<text x="${cx}" y="${cy-2}" text-anchor="middle" fill="#38d39f" font-size="20" font-weight="950" letter-spacing="-.5">ONE HEALTH</text>`;
+  s+=`<text x="${cx}" y="${cy+16}" text-anchor="middle" fill="#91a5ad" font-size="9" font-weight="800" letter-spacing="2">CONNECTED SYSTEM</text>`;
+  s+=`</svg>`;
+  document.getElementById('sysRing').innerHTML=s;
+}
+function initVisuals(){
+  document.getElementById('safetyRingWrap').innerHTML=ringSVG(170,70,'#38d39f','safetyRing')+'<div class="ringcenter"><b id="safetyNum">0</b><span>/ 100</span></div>';
+  document.getElementById('dRingWrap').innerHTML=ringSVG(240,104,'#f2b84b','dRing')+'<div class="ringcenter"><b id="discussionTimer">01:00</b></div>';
+  buildSystemRing();
+  /* SDG cards highlight their node in the web */
+  document.querySelectorAll('.sdgcard').forEach(card=>{
+    const node=document.querySelector('.sdgnode[data-sdg="'+card.dataset.sdg+'"]');
+    card.addEventListener('mouseenter',()=>node.classList.add('hl'));
+    card.addEventListener('mouseleave',()=>node.classList.remove('hl'));
+  });
+  document.querySelectorAll('.sdgnode').forEach(node=>{
+    const card=document.querySelector('.sdgcard[data-sdg="'+node.dataset.sdg+'"]');
+    node.addEventListener('mouseenter',()=>card.style.transform='translateX(4px)');
+    node.addEventListener('mouseleave',()=>card.style.transform='');
+  });
+}
+
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3500);
+}
+function openModal(html){document.getElementById('modalContent').innerHTML=html;document.getElementById('modal').classList.add('show')}
+function closeModal(){document.getElementById('modal').classList.remove('show')}
+function restart(){
+  clearInterval(state.timer);clearInterval(state.discussionTimer);clearTimeout(state.alertTimeout);
+  Object.assign(state,{screen:0,device:null,treatment:null,budget:null,responsibility:null,clinical:70,env:50,system:45});
+  history.length=0;
+  go(0);
+}
+initVisuals();
+go(0);
+</script>
+</body>
+</html>
